@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Pipeline - Neon Tech Edition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 50%, #0a1a1a 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .game-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .title {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff00ff, #00ffff, #00ff00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            font-size: 1.1rem;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .main-game {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            align-items: flex-start;
+        }
+
+        .queue-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .queue-title {
+            text-align: center;
+            color: #ff00ff;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .queue-item {
+            width: 80px;
+            height: 80px;
+            border: 3px solid #ff00ff;
+            border-radius: 8px;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.3);
+        }
+
+        .queue-item.next {
+            border-color: #ff00ff;
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.6);
+            animation: pulse 2s infinite;
+        }
+
+        .queue-number {
+            position: absolute;
+            bottom: -8px;
+            left: -8px;
+            background: #111;
+            color: #ff00ff;
+            font-size: 0.7rem;
+            font-weight: bold;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .next-indicator {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 24px;
+            height: 24px;
+            background: #ff00ff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: black;
+            font-size: 0.8rem;
+            font-weight: bold;
+            animation: pulse 1s infinite;
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 64px);
+            gap: 0;
+            padding: 20px;
+            border: 2px solid #00ffff;
+            border-radius: 12px;
+            background: #111;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+
+        .grid-cell {
+            width: 64px;
+            height: 64px;
+            border: 1px solid #444;
+            background: #1a1a1a;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .grid-cell:hover {
+            background: #2a2a2a;
+        }
+
+        .grid-cell.entry-point {
+            background: #002200;
+            border: 2px solid #00ff00;
+            box-shadow: inset 0 0 20px rgba(0, 255, 0, 0.4);
+            animation: pulse 3s infinite;
+        }
+
+        .entry-label {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            color: #00ff00;
+            font-weight: bold;
+        }
+
+        .entry-dot {
+            position: absolute;
+            left: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            background: #00ff00;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.8);
+            animation: pulse 2s infinite;
+        }
+
+        .data-particle {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .particle-core {
+            width: 32px;
+            height: 32px;
+            background: #00ffff;
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 1), 0 0 40px rgba(255, 0, 255, 0.5);
+            animation: bounce 0.6s ease-in-out infinite alternate;
+            position: relative;
+        }
+
+        .particle-ring {
+            position: absolute;
+            inset: -4px;
+            border: 2px solid #ff00ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .particle-outer {
+            position: absolute;
+            inset: -8px;
+            border: 1px solid #00ff00;
+            border-radius: 50%;
+            animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+
+        .flow-trail {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(45deg, rgba(0, 255, 255, 0.2), rgba(255, 0, 255, 0.2));
+            border-radius: 4px;
+            animation: pulse 1s infinite;
+        }
+
+        .stats-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .status-panel {
+            padding: 20px;
+            border: 2px solid #8000ff;
+            border-radius: 12px;
+            background: #1a1a1a;
+            box-shadow: 0 0 15px rgba(128, 0, 255, 0.3);
+        }
+
+        .status-title {
+            color: #8000ff;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .status-item {
+            margin-bottom: 5px;
+            font-size: 0.8rem;
+        }
+
+        .game-over-panel {
+            padding: 20px;
+            border: 2px solid #ff0000;
+            border-radius: 12px;
+            background: #1a1a1a;
+            text-align: center;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+        }
+
+        .game-over-title {
+            color: #ff0000;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .restart-btn {
+            padding: 10px 20px;
+            background: #ff0000;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+            margin-top: 10px;
+        }
+
+        .restart-btn:hover {
+            background: #cc0000;
+            transform: translateY(-2px);
+        }
+
+        .instructions {
+            margin-top: 30px;
+            text-align: center;
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .instructions p {
+            margin-bottom: 10px;
+        }
+
+        .flow-info {
+            color: #00ffff;
+        }
+
+        .pipe-hints {
+            color: #8000ff;
+            font-size: 0.8rem;
+        }
+
+        /* Pipe SVG Styles */
+        .pipe-svg {
+            position: absolute;
+            inset: 0;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        @keyframes bounce {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-6px); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes ping {
+            75%, 100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+
+        .cyan { color: #00ffff; }
+        .pink { color: #ff00ff; }
+        .green { color: #00ff00; }
+        .purple { color: #8000ff; }
+        .red { color: #ff0000; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Header -->
+        <div class="header">
+            <h1 class="title">AI PIPELINE</h1>
+            <div class="stats">
+                <div class="stat-item cyan">Level: <span id="level">1</span></div>
+                <div class="stat-item pink">Score: <span id="score">0</span></div>
+                <div class="stat-item green">Time: <span id="time">45</span>s</div>
+                <div class="stat-item purple">Target: <span id="target">8</span></div>
+            </div>
+        </div>
+
+        <!-- Main Game -->
+        <div class="main-game">
+            <!-- Queue Panel -->
+            <div class="queue-panel">
+                <h3 class="queue-title">NEXT PIPES</h3>
+                <div id="queue-container"></div>
+            </div>
+
+            <!-- Game Grid -->
+            <div class="game-grid" id="game-grid"></div>
+
+            <!-- Stats Panel -->
+            <div class="stats-panel">
+                <div class="status-panel">
+                    <h3 class="status-title">PIPELINE STATUS</h3>
+                    <div class="status-item">Current Length: <span class="cyan" id="current-length">0</span></div>
+                    <div class="status-item">Required: <span class="green" id="required-length">8</span></div>
+                    <div class="status-item">Data Flow: <span id="flow-status" class="red">STANDBY</span></div>
+                </div>
+                
+                <div id="game-over-panel" class="game-over-panel" style="display: none;">
+                    <h3 class="game-over-title">SYSTEM ERROR</h3>
+                    <p>Pipeline integrity compromised!</p>
+                    <button class="restart-btn" onclick="restartGame()">RESTART</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="instructions">
+            <p>Connect AI pipeline segments to create a path from the DATA entry point. Build at least <span id="min-length">8</span> connected segments!</p>
+            <p class="flow-info" id="flow-message">Data will start flowing in 45 seconds...</p>
+            <div class="pipe-hints">💡 Connect pipes: horizontal — vertical | corners ⌜⌝⌞⌟ cross +</div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        const GRID_SIZE = 10;
+        const PIPE_TYPES = [
+            'horizontal', 'vertical', 'corner-tl', 'corner-tr', 
+            'corner-bl', 'corner-br', 'cross'
+        ];
+
+        const PIPE_PATHS = {
+            horizontal: { left: true, right: true, top: false, bottom: false },
+            vertical: { left: false, right: false, top: true, bottom: true },
+            'corner-tl': { left: true, right: false, top: true, bottom: false },
+            'corner-tr': { left: false, right: true, top: true, bottom: false },
+            'corner-bl': { left: true, right: false, top: false, bottom: true },
+            'corner-br': { left: false, right: true, top: false, bottom: true },
+            cross: { left: true, right: true, top: true, bottom: true }
+        };
+
+        let grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(null));
+        let queue = [];
+        let score = 0;
+        let level = 1;
+        let gameStarted = false;
+        let gameOver = false;
+        let dataFlow = { x: 0, y: 4, active: false };
+        let flowPath = [];
+        let timeLeft = 45;
+        let minLength = 8;
+        let gameTimer = null;
+        let flowTimer = null;
+
+        // Initialize game
+        function initGame() {
+            generateQueue();
+            createGrid();
+            updateDisplay();
+        }
+
+        function generateQueue() {
+            queue = [];
+            for (let i = 0; i < 5; i++) {
+                queue.push(PIPE_TYPES[Math.floor(Math.random() * PIPE_TYPES.length)]);
+            }
+            updateQueueDisplay();
+        }
+
+        function createGrid() {
+            const gridElement = document.getElementById('game-grid');
+            gridElement.innerHTML = '';
+            
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+                    
+                    if (x === 0 && y === 4) {
+                        cell.className += ' entry-point';
+                        cell.innerHTML = '<div class="entry-label">DATA</div><div class="entry-dot"></div>';
+                    }
+                    
+                    cell.addEventListener('click', () => placePipe(x, y));
+                    gridElement.appendChild(cell);
+                }
+            }
+        }
+
+        function updateQueueDisplay() {
+            const container = document.getElementById('queue-container');
+            container.innerHTML = '';
+            
+            queue.slice(0, 5).forEach((pipeType, index) => {
+                const item = document.createElement('div');
+                item.className = `queue-item ${index === 0 ? 'next' : ''}`;
+                item.innerHTML = `
+                    ${createPipeSVG(pipeType, true, false, 70)}
+                    ${index === 0 ? '<div class="next-indicator">▶</div>' : ''}
+                    <div class="queue-number">${index + 1}</div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function createPipeSVG(type, isActive, hasData, size = 64) {
+            const center = size / 2;
+            const edgeOffset = 2;
+            
+            let path = '';
+            switch (type) {
+                case 'horizontal':
+                    path = `M ${edgeOffset},${center} L ${size - edgeOffset},${center}`;
+                    break;
+                case 'vertical':
+                    path = `M ${center},${edgeOffset} L ${center},${size - edgeOffset}`;
+                    break;
+                case 'corner-tl':
+                    path = `M ${edgeOffset},${center} Q ${center},${center} ${center},${edgeOffset}`;
+                    break;
+                case 'corner-tr':
+                    path = `M ${size - edgeOffset},${center} Q ${center},${center} ${center},${edgeOffset}`;
+                    break;
+                case 'corner-bl':
+                    path = `M ${edgeOffset},${center} Q ${center},${center} ${center},${size - edgeOffset}`;
+                    break;
+                case 'corner-br':
+                    path = `M ${size - edgeOffset},${center} Q ${center},${center} ${center},${size - edgeOffset}`;
+                    break;
+                case 'cross':
+                    path = `M ${edgeOffset},${center} L ${size - edgeOffset},${center} M ${center},${edgeOffset} L ${center},${size - edgeOffset}`;
+                    break;
+            }
+
+            const glowColor = hasData ? '#00ffff' : isActive ? '#ff00ff' : '#666666';
+            const strokeWidth = hasData ? 10 : isActive ? 8 : 6;
+            const filterId = `glow-${type}-${isActive}-${hasData}-${size}`;
+            
+            return `
+                <svg width="${size}" height="${size}" class="pipe-svg">
+                    <defs>
+                        <filter id="${filterId}">
+                            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                            <feMerge> 
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                        ${hasData ? `
+                            <linearGradient id="dataGrad-${type}" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#00ffff;stop-opacity:1" />
+                                <stop offset="50%" style="stop-color:#ff00ff;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#00ff00;stop-opacity:1" />
+                            </linearGradient>
+                        ` : ''}
+                    </defs>
+                    
+                    <path d="${path}" stroke="#333" stroke-width="12" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    
+                    <path d="${path}" 
+                          stroke="${hasData ? `url(#dataGrad-${type})` : glowColor}" 
+                          stroke-width="${strokeWidth}" 
+                          fill="none" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round" 
+                          filter="url(#${filterId})"
+                          style="filter: ${hasData ? 'drop-shadow(0 0 15px #00ffff) drop-shadow(0 0 25px #ff00ff)' : 
+                                isActive ? `drop-shadow(0 0 12px ${glowColor})` : 'none'}"/>
+                </svg>
+            `;
+        }
+
+        function placePipe(x, y) {
+            if (grid[y][x] || queue.length === 0 || gameOver) return;
+
+            grid[y][x] = queue[0];
+            queue.shift();
+            queue.push(PIPE_TYPES[Math.floor(Math.random() * PIPE_TYPES.length)]);
+            
+            updateGrid();
+            updateQueueDisplay();
+
+            if (!gameStarted) {
+                startGame();
+            }
+        }
+
+        function updateGrid() {
+            const cells = document.querySelectorAll('.grid-cell');
+            cells.forEach(cell => {
+                const x = parseInt(cell.dataset.x);
+                const y = parseInt(cell.dataset.y);
+                const pipe = grid[y][x];
+                
+                // Remove existing pipe content (but keep entry point elements)
+                if (x !== 0 || y !== 4) {
+                    cell.innerHTML = '';
+                }
+                
+                if (pipe) {
+                    const hasData = isInFlowPath(x, y) || (dataFlow.active && dataFlow.x === x && dataFlow.y === y);
+                    const svg = createPipeSVG(pipe, true, hasData);
+                    
+                    if (x === 0 && y === 4) {
+                        cell.innerHTML += svg;
+                    } else {
+                        cell.innerHTML = svg;
+                    }
+                }
+                
+                // Add data particle
+                if (dataFlow.active && dataFlow.x === x && dataFlow.y === y) {
+                    const particle = document.createElement('div');
+                    particle.className = 'data-particle';
+                    particle.innerHTML = `
+                        <div class="particle-core">
+                            <div class="particle-ring"></div>
+                            <div class="particle-outer"></div>
+                        </div>
+                    `;
+                    cell.appendChild(particle);
+                }
+                
+                // Add flow trail
+                if (isInFlowPath(x, y)) {
+                    const trail = document.createElement('div');
+                    trail.className = 'flow-trail';
+                    cell.appendChild(trail);
+                }
+            });
+        }
+
+        function startGame() {
+            gameStarted = true;
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                updateDisplay();
+                
+                if (timeLeft <= 0) {
+                    clearInterval(gameTimer);
+                    startDataFlow();
+                }
+            }, 1000);
+        }
+
+        function startDataFlow() {
+            dataFlow.active = true;
+            document.getElementById('flow-status').textContent = 'ACTIVE';
+            document.getElementById('flow-status').className = 'green';
+            
+            flowTimer = setInterval(() => {
+                const nextPos = findNextPipePosition(dataFlow.x, dataFlow.y, 
+                    flowPath.length > 0 ? flowPath[flowPath.length - 1].x : null,
+                    flowPath.length > 0 ? flowPath[flowPath.length - 1].y : null
+                );
+
+                // Add current position to flow path
+                if (!flowPath.some(pos => pos.x === dataFlow.x && pos.y === dataFlow.y)) {
+                    flowPath.push({ x: dataFlow.x, y: dataFlow.y });
+                }
+
+                if (!nextPos) {
+                    // Flow stopped
+                    clearInterval(flowTimer);
+                    if (flowPath.length >= minLength) {
+                        // Win!
+                        score += flowPath.length * 10 + (timeLeft * 5);
+                        level++;
+                        setTimeout(() => nextLevel(), 1500);
+                    } else {
+                        // Lose
+                        endGame();
+                    }
+                    return;
+                }
+
+                dataFlow.x = nextPos.x;
+                dataFlow.y = nextPos.y;
+                updateGrid();
+                updateDisplay();
+            }, 600);
+        }
+
+        function findNextPipePosition(currentX, currentY, previousX, previousY) {
+            const currentPipe = grid[currentY] && grid[currentY][currentX];
+            if (!currentPipe) return null;
+
+            const connections = PIPE_PATHS[currentPipe];
+            const possibleMoves = [];
+
+            if (connections.left && currentX > 0) {
+                possibleMoves.push({ x: currentX - 1, y: currentY, direction: 'left' });
+            }
+            if (connections.right && currentX < GRID_SIZE - 1) {
+                possibleMoves.push({ x: currentX + 1, y: currentY, direction: 'right' });
+            }
+            if (connections.top && currentY > 0) {
+                possibleMoves.push({ x: currentX, y: currentY - 1, direction: 'top' });
+            }
+            if (connections.bottom && currentY < GRID_SIZE - 1) {
+                possibleMoves.push({ x: currentX, y: currentY + 1, direction: 'bottom' });
+            }
+
+            const validMoves = possibleMoves.filter(move => {
+                if (previousX === null || previousY === null) return true;
+                return !(move.x === previousX && move.y === previousY);
+            });
+
+            // For cross pipes, prefer continuing in the same direction
+            if (currentPipe === 'cross' && previousX !== null && previousY !== null) {
+                const incomingDirection = {
+                    x: currentX - previousX,
+                    y: currentY - previousY
+                };
+                
+                const continueStraight = validMoves.find(move => {
+                    const moveDirection = {
+                        x: move.x - currentX,
+                        y: move.y - currentY
+                    };
+                    return moveDirection.x === incomingDirection.x && moveDirection.y === incomingDirection.y;
+                });
+                
+                if (continueStraight) {
+                    const nextPipe = grid[continueStraight.y] && grid[continueStraight.y][continueStraight.x];
+                    if (nextPipe && canConnect(continueStraight, nextPipe)) {
+                        return { x: continueStraight.x, y: continueStraight.y };
+                    }
+                }
+            }
+
+            for (const move of validMoves) {
+                const nextPipe = grid[move.y] && grid[move.y][move.x];
+                if (nextPipe && canConnect(move, nextPipe)) {
+                    return { x: move.x, y: move.y };
+                }
+            }
+
+            return null;
+        }
+
+        function canConnect(move, nextPipe) {
+            const nextConnections = PIPE_PATHS[nextPipe];
+            return (
+                (move.direction === 'left' && nextConnections.right) ||
+                (move.direction === 'right' && nextConnections.left) ||
+                (move.direction === 'top' && nextConnections.bottom) ||
+                (move.direction === 'bottom' && nextConnections.top)
+            );
+        }
+
+        function isInFlowPath(x, y) {
+            return flowPath.some(pos => pos.x === x && pos.y === y);
+        }
+
+        function nextLevel() {
+            resetGame();
+            timeLeft = Math.max(20, 45 - level * 3);
+            minLength = Math.min(20, 8 + level * 2);
+            updateDisplay();
+        }
+
+        function resetGame() {
+            clearInterval(gameTimer);
+            clearInterval(flowTimer);
+            grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(null));
+            dataFlow = { x: 0, y: 4, active: false };
+            flowPath = [];
+            gameStarted = false;
+            generateQueue();
+            createGrid();
+            document.getElementById('flow-status').textContent = 'STANDBY';
+            document.getElementById('flow-status').className = 'red';
+            document.getElementById('game-over-panel').style.display = 'none';
+        }
+
+        function endGame() {
+            gameOver = true;
+            document.getElementById('game-over-panel').style.display = 'block';
+            document.getElementById('flow-status').textContent = 'ERROR';
+            document.getElementById('flow-status').className = 'red';
+        }
+
+        function restartGame() {
+            gameOver = false;
+            score = 0;
+            level = 1;
+            timeLeft = 45;
+            minLength = 8;
+            resetGame();
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            document.getElementById('level').textContent = level;
+            document.getElementById('score').textContent = score;
+            document.getElementById('time').textContent = timeLeft;
+            document.getElementById('target').textContent = minLength;
+            document.getElementById('current-length').textContent = flowPath.length;
+            document.getElementById('required-length').textContent = minLength;
+            document.getElementById('min-length').textContent = minLength;
+            
+            const flowMessage = document.getElementById('flow-message');
+            if (dataFlow.active) {
+                flowMessage.textContent = `Data flowing... Current length: ${flowPath.length}/${minLength}`;
+            } else {
+                flowMessage.textContent = `Data will start flowing in ${timeLeft} seconds...`;
+            }
+        }
+
+        // Start the game
+        initGame();
+    </script>
+</body>
+</html>
